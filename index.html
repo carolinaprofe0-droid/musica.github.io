@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carrera de Palabras — 2 Jugadores</title>
+<style>
+:root{
+  --blue:#1677ff;
+  --blue-dark:#0754c7;
+  --red:#f0445e;
+  --red-dark:#c72b43;
+  --yellow:#ffe600;
+  --sky:#bfeeff;
+  --ink:#10233f;
+  --white:#fff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Arial,Helvetica,sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 20% 10%,#fff 0 10%,transparent 30%),
+    linear-gradient(135deg,#eaf8ff,#d8edff 50%,#f5fbff);
+  display:flex;
+  justify-content:center;
+  padding:18px;
+}
+.game{
+  width:min(1180px,100%);
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+.logo{
+  display:flex;align-items:center;gap:12px;
+}
+.logo-badge{
+  width:52px;height:52px;border-radius:16px;
+  background:var(--yellow);
+  display:grid;place-items:center;
+  font-size:27px;
+  box-shadow:0 7px 18px #0002;
+}
+h1{font-size:clamp(24px,4vw,38px);margin:0}
+.subtitle{margin:3px 0 0;color:#55708f;font-weight:700}
+.scores{display:flex;gap:10px}
+.score{
+  min-width:145px;padding:10px 14px;border-radius:16px;
+  color:white;text-align:center;font-weight:900;
+  box-shadow:0 7px 16px #0002;
+}
+.score.blue{background:linear-gradient(135deg,var(--blue),#42a0ff)}
+.score.red{background:linear-gradient(135deg,var(--red),#ff7183)}
+.score span{display:block;font-size:26px;margin-top:2px}
+
+/* MAP: fixed visual size; long race happens INSIDE it */
+.map{
+  position:relative;
+  height:430px;
+  border:9px solid var(--yellow);
+  border-radius:28px;
+  background:var(--sky);
+  overflow:hidden;
+  box-shadow:0 14px 35px #17436b2b,inset 0 0 0 3px #fff8;
+}
+
+/* Decorative geometric shapes exactly in upper/lower zones */
+.shape{
+  position:absolute;
+  width:44px;height:44px;
+  opacity:.95;
+  filter:drop-shadow(0 5px 5px #0002);
+}
+.circle{border-radius:50%}
+.square{border-radius:9px}
+.blue-shape{background:#2388ff}
+.red-shape{background:#f04c69}
+.b1{top:24px;left:32px}.b2{top:78px;left:104px}.b3{top:32px;right:112px}.b4{top:92px;right:35px}
+.r1{bottom:30px;left:36px}.r2{bottom:88px;left:108px}.r3{bottom:34px;right:110px}.r4{bottom:84px;right:34px}
+
+/* Long race route, but still inside the same map */
+.race-area{
+  position:absolute;
+  left:8%;
+  right:8%;
+  top:50%;
+  height:190px;
+  transform:translateY(-50%);
+}
+.lane{
+  position:absolute;
+  left:0;right:0;
+  height:62px;
+  border-radius:31px;
+  background:#32465d;
+  border:5px solid #fff;
+  box-shadow:inset 0 0 0 3px #17263a,0 8px 16px #0003;
+}
+.lane.blue-lane{top:12px}
+.lane.red-lane{bottom:12px}
+.lane::after{
+  content:"";
+  position:absolute;left:18px;right:18px;top:50%;
+  border-top:3px dashed #ffffffaa;
+  transform:translateY(-50%);
+}
+.start-line{
+  position:absolute;left:0;top:0;bottom:0;
+  width:9px;border-radius:8px;
+  background:#fff;
+  box-shadow:0 0 0 3px #17314c;
+  z-index:7;
+}
+.finish-line{
+  position:absolute;
+  right:0;top:0;bottom:0;
+  width:18px;
+  z-index:20;
+  background:repeating-linear-gradient(
+    45deg,#fff 0 10px,#17263a 10px 20px
+  );
+  border:3px solid #17263a;
+  border-radius:3px;
+  box-shadow:0 0 0 4px #ffffffaa,0 0 22px #0005;
+}
+.finish-label{
+  position:absolute;
+  right:-10px;
+  top:-36px;
+  transform:translateX(50%);
+  background:#17263a;color:white;
+  font-size:12px;font-weight:900;
+  padding:7px 10px;border-radius:9px;
+  white-space:nowrap;
+  z-index:30;
+}
+.car{
+  position:absolute;
+  top:50%;
+  width:72px;height:40px;
+  transform:translate(-50%,-50%);
+  border-radius:12px 17px 9px 9px;
+  z-index:10;
+  transition:left .65s cubic-bezier(.2,.8,.2,1);
+  box-shadow:0 7px 12px #0005;
+}
+.car::before{
+  content:"";
+  position:absolute;right:-7px;top:8px;
+  width:13px;height:24px;border-radius:5px;
+  background:#111a;
+}
+.car::after{
+  content:"";
+  position:absolute;left:16px;right:15px;top:8px;
+  height:13px;border-radius:7px 9px 3px 3px;
+  background:#dff7ff;
+  border:2px solid #ffffffaa;
+}
+.car .wheel{
+  position:absolute;bottom:-6px;width:14px;height:14px;
+  background:#111;border:3px solid #526276;border-radius:50%;
+}
+.car .w1{left:10px}.car .w2{right:10px}
+.blue-car{background:linear-gradient(135deg,#0b60dd,#42a2ff)}
+.red-car{background:linear-gradient(135deg,#d72e49,#ff7080)}
+.car-label{
+  position:absolute;top:-25px;left:50%;
+  transform:translateX(-50%);
+  font-size:11px;font-weight:900;color:#17314c;
+  white-space:nowrap;
+}
+.boost{
+  position:absolute;left:0;top:0;bottom:0;width:0;
+  border-radius:31px;opacity:.15;pointer-events:none;
+}
+.blue-boost{background:#2690ff}.red-boost{background:#ff506c}
+
+/* Question panel */
+.panel{
+  margin-top:14px;
+  background:#ffffffed;
+  border:2px solid #d9e8f5;
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 10px 28px #244a6b18;
+}
+.turn{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-bottom:10px;
+}
+.turn-badge{
+  padding:9px 14px;border-radius:999px;color:white;font-weight:900;
+}
+.turn-badge.blue{background:var(--blue)}.turn-badge.red{background:var(--red)}
+.used{color:#6a7f96;font-size:13px;font-weight:700}
+.question{
+  font-size:clamp(20px,3vw,28px);
+  font-weight:900;text-align:center;margin:10px auto 14px;
+}
+.answers{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+}
+.answer{
+  border:2px solid #cbdbea;
+  background:#f8fbfe;
+  color:var(--ink);
+  min-height:58px;border-radius:14px;
+  font-size:17px;font-weight:900;
+  cursor:pointer;
+  transition:.15s;
+}
+.answer:hover{transform:translateY(-2px);border-color:#7ba7d1}
+.answer.selected{border-color:#17314c;background:#dceeff;box-shadow:0 0 0 3px #1677ff22}
+.controls{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:13px;
+}
+.player-btn{
+  min-height:62px;border:0;border-radius:16px;
+  color:white;font-size:17px;font-weight:900;
+  cursor:pointer;box-shadow:0 7px 0 #0002;
+  transition:.12s;
+}
+.player-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #0002}
+.player-btn.blue{background:linear-gradient(135deg,var(--blue),#409fff)}
+.player-btn.red{background:linear-gradient(135deg,var(--red),#ff7182)}
+.player-btn:disabled{opacity:.45;cursor:not-allowed}
+.hint{text-align:center;margin:10px 0 0;color:#6b7f94;font-size:13px;font-weight:700}
+
+.overlay{
+  position:fixed;inset:0;background:#10233fcc;
+  display:grid;place-items:center;padding:20px;z-index:100;
+}
+.card{
+  width:min(520px,100%);background:white;border-radius:28px;
+  padding:30px;text-align:center;box-shadow:0 25px 70px #0005;
+}
+.card h2{font-size:34px;margin:8px 0 10px}
+.card p{color:#60758d;font-weight:700;line-height:1.5}
+.start-btn,.restart-btn{
+  border:0;border-radius:16px;padding:15px 24px;
+  font-size:18px;font-weight:900;color:#10233f;
+  background:var(--yellow);cursor:pointer;
+  box-shadow:0 7px 0 #b6a400;
+}
+.start-btn:active,.restart-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #b6a400}
+.hidden{display:none!important}
+.message{
+  min-height:24px;text-align:center;font-weight:900;margin-top:8px;
+}
+.message.ok{color:#12864a}.message.bad{color:#c52e45}
+
+@media(max-width:760px){
+  body{padding:10px}
+  header{align-items:flex-start;flex-direction:column}
+  .scores{width:100%}.score{flex:1;min-width:0}
+  .map{height:380px}
+  .race-area{left:5%;right:5%;height:170px}
+  .answers{grid-template-columns:repeat(2,1fr)}
+  .answer{min-height:52px}
+  .car{width:62px;height:36px}
+  .finish-line{width:15px}
+}
+</style>
+</head>
+<body>
+<div class="game">
+<header>
+  <div class="logo">
+    <div class="logo-badge">🏁</div>
+    <div>
+      <h1>Carrera de Palabras</h1>
+      <div class="subtitle">2 jugadores · clases de palabras</div>
+    </div>
+  </div>
+  <div class="scores">
+    <div class="score blue">🔵 JUGADOR AZUL<span id="blueScore">0</span></div>
+    <div class="score red">🔴 JUGADOR ROJO<span id="redScore">0</span></div>
+  </div>
+</header>
+
+<section class="map" aria-label="Mapa de carrera">
+  <div class="shape circle blue-shape b1"></div>
+  <div class="shape square blue-shape b2"></div>
+  <div class="shape square blue-shape b3"></div>
+  <div class="shape circle blue-shape b4"></div>
+  <div class="shape square red-shape r1"></div>
+  <div class="shape circle red-shape r2"></div>
+  <div class="shape circle red-shape r3"></div>
+  <div class="shape square red-shape r4"></div>
+
+  <div class="race-area">
+    <div class="start-line" title="Salida"></div>
+    <div class="finish-line" title="Meta"></div>
+    <div class="finish-label">META 🏁</div>
+
+    <div class="lane blue-lane"><div class="blue-boost" id="blueBoost"></div></div>
+    <div class="lane red-lane"><div class="red-boost" id="redBoost"></div></div>
+
+    <div class="car blue-car" id="blueCar" style="left:3%">
+      <div class="car-label">AZUL</div><i class="wheel w1"></i><i class="wheel w2"></i>
+    </div>
+    <div class="car red-car" id="redCar" style="left:3%">
+      <div class="car-label">ROJO</div><i class="wheel w1"></i><i class="wheel w2"></i>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="turn">
+    <div class="turn-badge blue" id="turnBadge">Turno: Azul</div>
+    <div class="used" id="usedCount">Palabras usadas: 0 / 30</div>
+  </div>
+  <div class="question" id="question">Preparando la carrera…</div>
+  <div class="answers" id="answers"></div>
+  <div class="controls">
+    <button class="player-btn blue" id="blueBtn">🔵 AZUL · A</button>
+    <button class="player-btn red" id="redBtn">🔴 ROJO · L</button>
+  </div>
+  <div class="message" id="message"></div>
+  <div class="hint">Elegí una respuesta con el mouse/táctil o con 1–4. Después confirmá con A (Azul) o L (Rojo).</div>
+</section>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="card">
+    <div style="font-size:55px">🏎️🏁</div>
+    <h2>¡Preparados!</h2>
+    <p>Respondé correctamente para avanzar. El primer auto en llegar a 100 puntos gana.</p>
+    <p id="startingPlayer"></p>
+    <button class="start-btn" id="startBtn">Comenzar carrera</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winOverlay">
+  <div class="card">
+    <div style="font-size:60px">🏆</div>
+    <h2 id="winnerTitle">¡Ganador!</h2>
+    <p id="winnerText"></p>
+    <button class="restart-btn" id="restartBtn">Jugar de nuevo</button>
+  </div>
+</div>
+
+<script>
+const bank = [
+ ["perro","Sustantivo"],["rápido","Adjetivo"],["correr","Verbo"],["rápidamente","Adverbio"],
+ ["escuela","Sustantivo"],["inteligente","Adjetivo"],["estudiar","Verbo"],["ayer","Adverbio"],
+ ["mesa","Sustantivo"],["hermoso","Adjetivo"],["jugar","Verbo"],["muy","Adverbio"],
+ ["feliz","Adjetivo"],["caminar","Verbo"],["casa","Sustantivo"],["lentamente","Adverbio"],
+ ["amigo","Sustantivo"],["grande","Adjetivo"],["saltar","Verbo"],["hoy","Adverbio"],
+ ["libro","Sustantivo"],["azul","Adjetivo"],["escribir","Verbo"],["siempre","Adverbio"],
+ ["montaña","Sustantivo"],["pequeño","Adjetivo"],["leer","Verbo"],["aquí","Adverbio"],
+ ["pelota","Sustantivo"],["brillante","Adjetivo"]
+];
+
+const choices=["Sustantivo","Adjetivo","Verbo","Adverbio"];
+let deck=[], used=new Set(), current=null, selected=null;
+let turn="B", blue=0, red=0, running=false;
+let audioCtx=null, musicTimer=null;
+
+const $=id=>document.getElementById(id);
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  return a;
+}
+function resetDeck(){
+  deck=shuffle(bank.map(x=>({word:x[0],answer:x[1]})));
+  used.clear();
+}
+function startMusic(){
+  if(audioCtx) return;
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const master=audioCtx.createGain(); master.gain.value=.045; master.connect(audioCtx.destination);
+  const notes=[261.63,329.63,392,329.63,293.66,349.23,440,349.23];
+  let i=0;
+  function beat(){
+    if(!audioCtx) return;
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.type="triangle"; o.frequency.value=notes[i++%notes.length];
+    g.gain.setValueAtTime(0,audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(.75,audioCtx.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.30);
+    o.connect(g);g.connect(master);o.start();o.stop(audioCtx.currentTime+.32);
+  }
+  beat(); musicTimer=setInterval(beat,380);
+}
+function stopMusic(){
+  if(musicTimer) clearInterval(musicTimer);
+  musicTimer=null;
+}
+function nextQuestion(){
+  if(deck.length===0) return endGame("¡Partida completada!");
+  current=deck.shift();
+  used.add(current.word);
+  selected=null;
+  $("question").textContent=`¿Qué clase de palabra es «${current.word}»?`;
+  $("usedCount").textContent=`Palabras usadas: ${used.size} / ${bank.length}`;
+  const opts=shuffle([...choices]);
+  $("answers").innerHTML="";
+  opts.forEach((x,i)=>{
+    const b=document.createElement("button");
+    b.className="answer"; b.textContent=`${i+1}. ${x}`;
+    b.onclick=()=>selectAnswer(i,x,b);
+    $("answers").appendChild(b);
+  });
+  $("message").textContent="";
+  $("message").className="message";
+  updateTurn();
+}
+function selectAnswer(i,x,b){
+  selected={index:i,value:x};
+  document.querySelectorAll(".answer").forEach(a=>a.classList.remove("selected"));
+  b.classList.add("selected");
+}
+function updateTurn(){
+  const badge=$("turnBadge");
+  badge.textContent=turn==="B"?"Turno: 🔵 Azul":"Turno: 🔴 Rojo";
+  badge.className="turn-badge "+(turn==="B"?"blue":"red");
+  $("blueBtn").disabled=!running || turn!=="B";
+  $("redBtn").disabled=!running || turn!=="R";
+}
+function moveCar(player){
+  const points=player==="B"?blue:red;
+  const pct=Math.min(96,3+(points/100)*93);
+  $(player==="B"?"blueCar":"redCar").style.left=pct+"%";
+  $(player==="B"?"blueBoost":"redBoost").style.width=pct+"%";
+}
+function confirm(player){
+  if(!running || turn!==player || !selected){
+    if(running && turn===player && !selected) {
+      $("message").textContent="Elegí una respuesta primero.";
+      $("message").className="message bad";
+    }
+    return;
+  }
+  const correct=selected.value===current.answer;
+  if(correct){
+    if(player==="B") blue=Math.min(100,blue+10); else red=Math.min(100,red+10);
+    $("blueScore").textContent=blue; $("redScore").textContent=red;
+    moveCar(player);
+    $("message").textContent="¡Correcto! 🚀 El auto avanza.";
+    $("message").className="message ok";
+    if((player==="B"?blue:red)>=100){
+      setTimeout(()=>endGame(player==="B"?"¡Gana Jugador Azul!":"¡Gana Jugador Rojo!"),650);
+      return;
+    }
+  }else{
+    $("message").textContent=`No era correcto. La respuesta era ${current.answer}.`;
+    $("message").className="message bad";
+  }
+  turn=turn==="B"?"R":"B";
+  updateTurn();
+  setTimeout(nextQuestion,650);
+}
+function begin(){
+  blue=red=0; $("blueScore").textContent=0; $("redScore").textContent=0;
+  moveCar("B");moveCar("R");
+  resetDeck(); running=true;
+  turn=Math.random()<.5?"B":"R";
+  $("startingPlayer").textContent=turn==="B"?"Empieza 🔵 Jugador Azul":"Empieza 🔴 Jugador Rojo";
+  $("startOverlay").classList.add("hidden");
+  startMusic();
+  nextQuestion();
+}
+function endGame(text){
+  running=false; stopMusic();
+  $("winnerTitle").textContent=text;
+  $("winnerText").textContent=`Puntaje final: Azul ${blue} — Rojo ${red}`;
+  $("winOverlay").classList.remove("hidden");
+  updateTurn();
+}
+$("startBtn").onclick=begin;
+$("restartBtn").onclick=()=>{ $("winOverlay").classList.add("hidden"); $("startOverlay").classList.remove("hidden"); };
+$("blueBtn").onclick=()=>confirm("B");
+$("redBtn").onclick=()=>confirm("R");
+document.addEventListener("keydown",e=>{
+  if(!running)return;
+  if(e.key>="1"&&e.key<="4"){
+    const idx=Number(e.key)-1, btn=document.querySelectorAll(".answer")[idx];
+    if(btn)btn.click();
+  }
+  if(e.key.toLowerCase()==="a")confirm("B");
+  if(e.key.toLowerCase()==="l")confirm("R");
+});
+updateTurn();
+</script>
+</body>
+</html>
